@@ -16,7 +16,6 @@ namespace SysBot.Pokemon
     /// </summary>
     public abstract class PokeRoutineExecutor7B : PokeRoutineExecutor<PB7>
     {
-        private readonly PokeDataPointers7B Pointers = new();
         protected PokeRoutineExecutor7B(PokeBotState cfg) : base(cfg) { }
 
         public override async Task<PB7> ReadPokemon(ulong offset, CancellationToken token)
@@ -74,11 +73,35 @@ namespace SysBot.Pokemon
             return null;
         }
 
+        public async Task<PB7?> ReadMainPokeData(CancellationToken token) => await ReadUntilPresentMain(MainPokeData, 2_000, 0_200, token).ConfigureAwait(false);
+        public async Task<PB7?> ReadGift(CancellationToken token) => await ReadUntilPresent(GiftPokeData, 2_000, 0_200, token).ConfigureAwait(false);
+        public async Task<PB7?> ReadTrade(CancellationToken token) => await ReadMainPokeData(token).ConfigureAwait(false);
+        public async Task<PB7?> ReadWild(CancellationToken token) => await ReadUntilPresent(WildPokeData, 2_000, 0_200, token).ConfigureAwait(false);
+        public async Task<PB7?> ReadGoEntity(CancellationToken token) => await ReadUntilPresent(GoPokeData, 2_000, 0_200, token).ConfigureAwait(false);
+        public async Task<PB7?> ReadStationary(CancellationToken token) => await ReadUntilPresent(StationaryPokeData, 2_000, 0_200, token).ConfigureAwait(false);
+        public async Task<PB7?> ReadFossil(CancellationToken token) => await ReadUntilPresentPointer(PokeDataPointers7B.FossilPokeData, 1_000, 0_200, BoxFormatSlotSize, token).ConfigureAwait(false);
+
+        public async Task<PB7?> ReadGiftOrFossil(CancellationToken token)
+        {
+            var pk = await ReadGift(token).ConfigureAwait(false);
+            pk ??= await ReadFossil(token).ConfigureAwait(false);
+            return pk;
+        }
+
+        public async Task<PB7?> ReadWildOrGo(CancellationToken token)
+        {
+            var pk = await ReadWild(token).ConfigureAwait(false);
+            pk ??= await ReadGoEntity(token).ConfigureAwait(false);
+            return pk;
+        }
+
         public async Task<bool> IsInTitleScreen(CancellationToken token) => !((await SwitchConnection.ReadBytesMainAsync(PokeDataOffsets7B.IsInTitleScreen, 1, token).ConfigureAwait(false))[0] == 1);
 
         public async Task<bool> IsInBattle(CancellationToken token) => (await SwitchConnection.ReadBytesMainAsync(IsInBattleScenario, 1, token).ConfigureAwait(false))[0] > 0;
 
         public async Task<bool> IsInCatchScreen(CancellationToken token) => (await SwitchConnection.ReadBytesMainAsync(IsInOverworld, 1, token).ConfigureAwait(false))[0] != 0;
+
+        public async Task<bool> IsInConfirmDialog(CancellationToken token) => (await SwitchConnection.ReadBytesMainAsync(IsInConfirmationDialog, 1, token).ConfigureAwait(false))[0] != 0;
 
         public async Task<bool> IsInTrade(CancellationToken token) => (await SwitchConnection.ReadBytesMainAsync(PokeDataOffsets7B.IsInTrade, 1, token).ConfigureAwait(false))[0] != 0;
 
@@ -94,86 +117,60 @@ namespace SysBot.Pokemon
 
         public async Task EditWildNature(Nature target, CancellationToken token) => await Connection.WriteBytesAsync(BitConverter.GetBytes((uint)target), WildNature, token).ConfigureAwait(false);
 
-        public async Task<uint> ReadSpeciesCombo(CancellationToken token) =>
-            BitConverter.ToUInt16(await SwitchConnection.PointerPeek(2, Pointers.SpeciesComboPointer, token).ConfigureAwait(false), 0);
+        public async Task<Lure> ReadLureType(CancellationToken token) => (Lure)BitConverter.ToUInt16(await Connection.ReadBytesAsync(LureType, 2, token).ConfigureAwait(false), 0);
 
-        public async Task<uint> ReadComboCount(CancellationToken token) =>
-            BitConverter.ToUInt16(await SwitchConnection.PointerPeek(2, Pointers.CatchComboPointer, token).ConfigureAwait(false), 0);
+        public async Task<uint> ReadLureCounter(CancellationToken token) => BitConverter.ToUInt16(await Connection.ReadBytesAsync(LureCounter, 2, token).ConfigureAwait(false), 0);
 
-        public async Task EditSpeciesCombo(uint species, CancellationToken token) =>
-            await SwitchConnection.PointerPoke(BitConverter.GetBytes(species), Pointers.SpeciesComboPointer, token).ConfigureAwait(false);
+        public async Task EditLureType(uint type, CancellationToken token) => await Connection.WriteBytesAsync(BitConverter.GetBytes(type), LureType, token).ConfigureAwait(false);
 
-        public async Task EditComboCount(uint count, CancellationToken token) =>
-            await SwitchConnection.PointerPoke(BitConverter.GetBytes(count), Pointers.CatchComboPointer, token).ConfigureAwait(false);
+        public async Task EditLureCounter(uint counter, CancellationToken token) => await Connection.WriteBytesAsync(BitConverter.GetBytes(counter), LureCounter, token).ConfigureAwait(false);
 
-        public async Task<long> CountMilliseconds(PokeBotHubConfig config, CancellationToken token)
+        public async Task<uint> ReadSpeciesCombo(CancellationToken token) => BitConverter.ToUInt16(await Connection.ReadBytesAsync(SpeciesCombo, 2, token).ConfigureAwait(false), 0);
+
+        public async Task<uint> ReadComboCount(CancellationToken token) => BitConverter.ToUInt16(await Connection.ReadBytesAsync(CatchCombo, 2, token).ConfigureAwait(false), 0);
+
+        public async Task EditSpeciesCombo(uint species, CancellationToken token) => await Connection.WriteBytesAsync(BitConverter.GetBytes(species), SpeciesCombo, token).ConfigureAwait(false);
+
+        public async Task EditComboCount(uint count, CancellationToken token) => await Connection.WriteBytesAsync(BitConverter.GetBytes(count), CatchCombo, token).ConfigureAwait(false);
+
+        public async Task<int> ReadLastSpawn(CancellationToken token) => BitConverter.ToUInt16(await Connection.ReadBytesAsync(LastSpawn, 2, token).ConfigureAwait(false), 0);
+
+        public async Task WipeLastSpawn(CancellationToken token) => await Connection.WriteBytesAsync(new byte[] { 0x0, 0x0 }, LastSpawn, token).ConfigureAwait(false);
+
+        public async Task<uint> ReadSpawnFlags(CancellationToken token) => BitConverter.ToUInt16(await Connection.ReadBytesAsync(LastSpawnFlags, 2, token).ConfigureAwait(false), 0);
+
+        public async Task<TextSpeed> ReadTextSpeed(CancellationToken token)
         {
-            var WaitMS = config.LGPE_OverworldScan.MaxMs;
-            var stuck = false;
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            var data = await SwitchConnection.ReadBytesMainAsync(FreezedValue, 1, token).ConfigureAwait(false);
-            var comparison = data;
-            do
-            {
-                data = await SwitchConnection.ReadBytesMainAsync(FreezedValue, 1, token).ConfigureAwait(false);
-                if (stopwatch.ElapsedMilliseconds > WaitMS)
-                    stuck = true;
-            } while (data.SequenceEqual(comparison) && stuck == false && !token.IsCancellationRequested);
-            if (!stuck)
-            {
-                stopwatch.Restart();
-                comparison = data;
-                do
-                {
-                    data = await SwitchConnection.ReadBytesMainAsync(FreezedValue, 1, token).ConfigureAwait(false);
-                } while (data == comparison && !token.IsCancellationRequested);
-                return stopwatch.ElapsedMilliseconds;
-            }
-            else
-                return 0;
+            var data = await Connection.ReadBytesAsync(TextSpeedOffset, 1, token).ConfigureAwait(false);
+            return (TextSpeed)(data[0] & 3);
         }
 
-        //Let's Go useful cheats for testing purposes.
-        public async Task Zaksabeast(CancellationToken token, GameVersion version)
+        public async Task EditTextSpeed(TextSpeed speed, CancellationToken token)
         {
-            var offset = version == GameVersion.GP ? PGeneratingFunction1 : EGeneratingFunction1;
-            //This is basically the Zaksabeast code ported for the newest Let's game version. 
-            var inject = new byte[] { 0xE9, 0x03, 0x00, 0x2A, 0x60, 0x12, 0x40, 0xB9, 0xE1, 0x03, 0x09, 0x2A, 0x69, 0x06, 0x00, 0xF9, 0xDC, 0xFD, 0xFF, 0x97, 0x40, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x14 };
-            await SwitchConnection.WriteBytesMainAsync(inject, offset, token).ConfigureAwait(false);
+            var textSpeedByte = await Connection.ReadBytesAsync(TextSpeedOffset, 1, token).ConfigureAwait(false);
+            var data = new[] { (byte)((textSpeedByte[0] & 0xFC) | (int)speed) };
+            await Connection.WriteBytesAsync(data, TextSpeedOffset, token).ConfigureAwait(false);
         }
-        public async Task Unfreeze(CancellationToken token, GameVersion version)
+
+        public async Task FleeToOverworld(CancellationToken token)
         {
-            var offset = version == GameVersion.GP ? PGeneratingFunction7 : EGeneratingFunction7;
-            var data = new byte[] { 0x0C, 0x00, 0x00, 0x14 };
-            await SwitchConnection.WriteBytesMainAsync(data, offset, token).ConfigureAwait(false);
-        }
-        public async Task ForceShiny(CancellationToken token, GameVersion version)
-        {
-            var offset = version == GameVersion.GP ? PShinyValue : EShinyValue;
-            //100% Shiny Odds
-            var inject = new byte[] { 0x27, 0x00, 0x00, 0x14 };
-            await SwitchConnection.WriteBytesMainAsync(inject, offset, token).ConfigureAwait(false);
-        }
-        public async Task NormalShiny(CancellationToken token, GameVersion version)
-        {
-            var offset = version == GameVersion.GP ? PShinyValue : EShinyValue;
-            //Standard shiny odds
-            var inject = new byte[] { 0xE0, 0x02, 0x00, 0x54 };
-            await SwitchConnection.WriteBytesMainAsync(inject, offset, token).ConfigureAwait(false);
+            while (!await IsInConfirmDialog(token).ConfigureAwait(false) && !token.IsCancellationRequested)
+                await Click(B, 1_200, token).ConfigureAwait(false);
+            await Click(A, 1_000, token).ConfigureAwait(false);
+            while (await IsInCatchScreen(token).ConfigureAwait(false) && !token.IsCancellationRequested) { }
+            Log($"Exited wild encounter.");
         }
 
         public async Task OpenGame(PokeBotHubConfig config, CancellationToken token)
         {
             // Open game.
-            await Click(A, 1_000 + config.Timings.ExtraTimeLoadProfile, token).ConfigureAwait(false);
+            await Click(A, 1_500 + config.Timings.ExtraTimeLoadProfile, token).ConfigureAwait(false);
 
             //  The user can optionally turn on the setting if they know of a breaking system update incoming.
             if (config.Timings.AvoidSystemUpdate)
-            {
                 await Click(DUP, 0_600, token).ConfigureAwait(false);
-                await Click(A, 1_000 + config.Timings.ExtraTimeLoadProfile, token).ConfigureAwait(false);
-            }
+
+            await Click(A, 2_000 + config.Timings.ExtraTimeLoadProfile, token).ConfigureAwait(false);
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();

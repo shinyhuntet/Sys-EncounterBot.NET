@@ -180,228 +180,12 @@ namespace SysBot.Pokemon
             pointer = head;
         }
     }
-
-    class State
-    {
-
-     public State(uint advances)
-        { 
-            this.advances = advances;
-        }
-
-        public uint getSeed()
-        { 
-            return seed;
-        }
-
-        public void setSeed(uint seed)
-    {
-        this.seed = seed;
-    }
-
-        public uint getAdvances()
-    {
-        return advances;
-    }
-
-        public void setAdvances(uint advances)
-{
-    this.advances = advances;
-}
-
-        public uint getPID()
-    {
-        return pid;
-    }
-
-        public void setPID(uint pid)
-{
-    this.pid = pid;
-}
-
-        public void setPID(ushort high, ushort low)
-{
-    pid = (uint)((high << 16) | low);
-}
-
-        public ushort getIV(ushort index)
-    {
-        return ivs[index];
-    }
-
-        public void setIVs(ushort index, ushort iv)
-{
-    this.ivs[index] = iv;
-}
-
-        public void SetIVs(ushort iv1, ushort iv2)
-{
-    ivs[0] = (ushort)(iv1 & 0x1f);
-    ivs[1] = (ushort)((iv1 >> 5) & 0x1f);
-    ivs[2] = (ushort)((iv1 >> 10) & 0x1f);
-    ivs[3] = (ushort)((iv2 >> 5) & 0x1f);
-    ivs[4] = (ushort)((iv2 >> 10) & 0x1f);
-    ivs[5] = (ushort)(iv2 & 0x1f);
-}
-
-        public void setIVs(uint iv)
-{
-    ushort iv1 = (ushort)(iv >> 16);
-    ivs[0] = (ushort)(iv1 >> 10);
-    ivs[1] = (ushort)((iv1 >> 5) & 0x1f);
-    ivs[2] = (ushort)(iv1 & 0x1f);
-
-    ushort iv2 = (ushort)(iv & 0xffff);
-    ivs[3] = (ushort)(iv2 >> 10);
-    ivs[4] = (ushort)((iv2 >> 5) & 0x1f);
-    ivs[5] = (ushort)(iv2 & 0x1f);
-}
-
-        public void setIVs(ushort hp, ushort atk, ushort def, ushort spa, ushort spd, ushort spe)
-{
-    ivs[0] = hp;
-    ivs[1] = atk;
-    ivs[2] = def;
-    ivs[3] = spa;
-    ivs[4] = spd;
-    ivs[5] = spe;
-}
-
-        public void setIV(ushort index, ushort iv)
-{
-    ivs[index] = iv;
-}
-
-public ushort getAbility()
-    {
-        return ability;
-    }
-
-    public void setAbility(ushort ability)
-{
-    this.ability = ability;
-}
-
-        public ushort getGender()
-    {
-        return gender;
-    }
-
-        public void setGender(ushort gender, ushort genderRatio)
-{
-    if (genderRatio == 255) // Genderless
-    {
-        this.gender = 2;
-    }
-    else if (genderRatio == 254) // Female
-    {
-        this.gender = 1;
-    }
-    else if (genderRatio == 0) // Male
-    {
-        this.gender = 0;
-    }
-    else // Random gender
-    {
-        if(gender < genderRatio)
-            this.gender = gender;
-    }
-}
-
-        public void setGender(ushort gender)
-{
-    this.gender = gender;
-}
-
-        public ushort getHidden()
-    {
-        return hidden;
-    }
-
-        public ushort getPower()
-    {
-        return power;
-    }
-
-        public ushort getNature()
-    {
-        return nature;
-    }
-
-        public void setNature(ushort nature)
-{
-    this.nature = nature;
-}
-
-        public ushort getLevel()
-    {
-        return level;
-    }
-
-        public void setLevel(ushort level)
-{
-    this.level = level;
-}
-
-        public ushort getShiny()
-    {
-        return shiny;
-    }
-
-        public void setShiny(ushort shiny)
-{
-    this.shiny = shiny;
-}
-        public void setShiny(ushort tsv, ushort psv, ushort compare)
-    {
-
-    if (tsv == psv)
-    {
-        shiny = 2; // Square
-    }
-    else if ((tsv ^ psv) < compare)
-    {
-        shiny = 1; // Star
-    }
-    else
-    {
-        shiny = 0;
-    }
-}
-
-        public void calculateHiddenPower()
-{
-    int[] _order = new int[6]{ 0, 1, 2, 5, 3, 4 };
-
-    ushort h = 0;
-    ushort p = 0;
-    for (int i = 0; i < 6; i++)
-    {
-        h += (ushort)((ivs[_order[i]] & 1) << i);
-        p += (ushort)(((ivs[_order[i]] >> 1) & 1) << i);
-    }
-
-    hidden = (ushort)(h * 15 / 63);
-    power = (ushort)(30 + (p * 40 / 63));
-}
-        protected uint seed;
-        protected uint advances;
-        protected uint pid;
-        protected ushort[] ivs = new ushort[6];
-        protected ushort ability;
-        protected ushort gender;
-        protected ushort hidden;
-        protected ushort power;
-        protected ushort nature;
-        protected ushort level;
-        protected ushort shiny;
-}
     
     class XoroshiroBDSP
     {
-    public XoroshiroBDSP(ulong seed)
+        public XoroshiroBDSP(ulong seed)
         {
-            ulong splitmix (ulong seed, ulong state)
+            ulong splitmix(ulong seed, ulong state)
             {
                 seed += state;
                 seed = 0xBF58476D1CE4E5B9 * (seed ^ (seed >> 30));
@@ -466,12 +250,13 @@ public ushort getAbility()
             }
         };
 
-      public EggMoveList[] eggMoveList = {
-    new EggMoveList(12, 1, new uint[]{ 130, 80, 174, 275, 267, 204, 345, 133, 437, 438, 124, 580, 0, 0, 0, 0 }),
+        public EggMoveList[] eggMoveList =
+        {
+            new EggMoveList(12, 1, new uint[]{ 130, 80, 174, 275, 267, 204, 345, 133, 437, 438, 124, 580, 0, 0, 0, 0 }),
     new EggMoveList(13, 4, new uint[]{ 187, 246, 44, 407, 232, 68, 17, 525, 200, 251, 349, 242, 314, 0, 0, 0 }),
     new EggMoveList(12, 7, new uint[]{ 243, 114, 54, 175, 281, 252, 392, 453, 323, 791, 330, 396, 0, 0, 0, 0 }),
-new EggMoveList(9, 19,new uint[]{ 103, 172, 154, 68, 179, 253, 387, 279, 515, 0, 0, 0, 0, 0, 0, 0 }),   
-new EggMoveList(9, 23,new uint[]{ 21, 180, 251, 305, 184, 342, 50, 415, 389, 0, 0, 0, 0, 0, 0, 0 }),   
+new EggMoveList(9, 19,new uint[]{ 103, 172, 154, 68, 179, 253, 387, 279, 515, 0, 0, 0, 0, 0, 0, 0 }),
+new EggMoveList(9, 23,new uint[]{ 21, 180, 251, 305, 184, 342, 50, 415, 389, 0, 0, 0, 0, 0, 0, 0 }),
 new EggMoveList(8, 27,new uint[]{ 68, 175, 189, 400, 232, 468, 306, 341, 0, 0, 0, 0, 0, 0, 0, 0 }),
 new EggMoveList(11, 29,new uint[]{ 68, 50, 342, 130, 48, 36, 305, 116, 204, 251, 599, 0, 0, 0, 0, 0 }),
 new EggMoveList(13, 32,new uint[]{ 93, 68, 50, 457, 342, 389, 48, 36, 32, 37, 133, 251, 599, 0, 0, 0 }),
@@ -608,9 +393,9 @@ new EggMoveList(10, 453,new uint[]{ 364, 223, 29, 410, 252, 238, 418, 68, 501, 3
 new EggMoveList(8, 458,new uint[]{ 239, 114, 21, 243, 150, 366, 109, 133, 0, 0, 0, 0, 0, 0, 0, 0 }),
 new EggMoveList(7, 459,new uint[]{ 73, 74, 38, 23, 130, 345, 402, 0, 0, 0, 0, 0, 0, 0, 0, 0 }),
 new EggMoveList(13, 423,new uint[]{ 68, 243, 254, 256, 255, 281, 174, 124, 499, 54, 151, 133, 90, 0, 0, 0 }),
- };
+        };
 
-public struct LevelInfo
+        public struct LevelInfo
         {
             public uint max;
             public uint min;
@@ -622,33 +407,42 @@ public struct LevelInfo
             }
         };
 
-       public LevelInfo[] levelInfoList
-    = { new LevelInfo(16, 20),new LevelInfo(25, 29),new LevelInfo(29, 33),new LevelInfo(33, 37),new LevelInfo(36, 40),
-       new LevelInfo(39, 43),new LevelInfo(42, 46),new LevelInfo(50, 55),new LevelInfo(58, 63) };
+        public LevelInfo[] levelInfoList =
+        {
+            new LevelInfo(16, 20),
+            new LevelInfo(25, 29),
+            new LevelInfo(29, 33),
+            new LevelInfo(33, 37),
+            new LevelInfo(36, 40),
+            new LevelInfo(39, 43),
+            new LevelInfo(42, 46),
+            new LevelInfo(50, 55),
+            new LevelInfo(58, 63)
+        };
 
         public int getItem(uint rand, Lead lead, PB8 pk)
-{
-     var ItemTableRange = new uint[]{ 50, 60 };
-
-    uint thresh1 = ItemTableRange[lead == Lead.CompoundEyes ? 1 : 0];
-         uint thresh2 = 20;
-
-    if (rand >= thresh1)
-    {
-        if (rand >= (thresh1 + thresh2))
         {
+            var ItemTableRange = new uint[] { 50, 60 };
+
+            uint thresh1 = ItemTableRange[lead == Lead.CompoundEyes ? 1 : 0];
+            uint thresh2 = 20;
+
+            if (rand >= thresh1)
+            {
+                if (rand >= (thresh1 + thresh2))
+                {
                     return ((PersonalInfoBDSP)PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form)).Item3;
-    }
-        else
-        {
-            return ((PersonalInfoBDSP)PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form)).Item2;
-}
-    }
-    else
-{
-    return ((PersonalInfoBDSP)PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form)).Item1;
-}
-}
+                }
+                else
+                {
+                    return ((PersonalInfoBDSP)PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form)).Item2;
+                }
+            }
+            else
+            {
+                return ((PersonalInfoBDSP)PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form)).Item1;
+            }
+        }
         public PB8 UndergroundGenerator(PB8 pk, ulong seed0, ulong seed1, bool diglett, uint levelflag, PokeBotHub<PK8> Hub)
         {
             int pidRolls = diglett ? 2 : 1;
@@ -928,18 +722,19 @@ public struct LevelInfo
             return pk;
         }
 
-        public PB8 CalculateFromStates(PB8 pk, Shiny shiny, RNGType type, Xorshift seed, Nature SyncNature, WildMode mode = WildMode.None, List<int>? slots = null, PokeEvents events = PokeEvents.None)
+        public PB8 CalculateFromStates(PB8 pk, Shiny shiny, RNGType type, Xorshift seed, Nature SyncNature, WildMode mode = WildMode.None, List<int>? slots = null, PokeEvents events = PokeEvents.None, int[]? unownForms = null)
         {
             var xoro = new Xorshift(seed.GetU64State()[0], seed.GetU64State()[1]);
-
-            var flawless = GetFlawless(type, events);
-            var issync = SyncNature == Nature.Random?false:true;
-
+            
             if(type is RNGType.Wild && mode != WildMode.None && slots != null)
 			{
                 var calc = xoro.Range(0, 100);
                 var slot = CalcSlot(mode, calc);
-                pk.Species = slots[(int)slot];
+                pk.Species = slots[slot];
+
+                if (unownForms != null && unownForms.Length > 0)
+                    pk.Form = unownForms[xoro.Range(0, (byte)unownForms.Length)];
+
                 //Save the slot in some available structure space
                 pk.Move1 = slot;
                 if (mode is WildMode.GoodRod or WildMode.GoodRod or WildMode.SuperRod)
@@ -980,21 +775,29 @@ public struct LevelInfo
             pk.PID = pid;
 
             int[] ivs = { UNSET, UNSET, UNSET, UNSET, UNSET, UNSET };
-            
-            var determined = 0;
-            while (determined < flawless)
-            {
-                var idx = xoro.Next()%N_IV;
-                if (ivs[idx] != UNSET)
-                    continue;
-                ivs[idx] = MAX;
-                determined++;
-            }
 
-            for (var i = 0; i < ivs.Length; i++)
+            if (IsFixedIV(type, events))
             {
-                if (ivs[i] == UNSET)
-                    ivs[i] = (int)(xoro.Next()&MAX);
+                var flawless = GetFlawless(type, events);
+                var determined = 0;
+                while (determined < flawless)
+                {
+                    var idx = xoro.Next() % N_IV;
+                    if (ivs[idx] != UNSET)
+                        continue;
+                    ivs[idx] = MAX;
+                    determined++;
+                }
+
+                for (var i = 0; i < ivs.Length; i++)
+                {
+                    if (ivs[i] == UNSET)
+                        ivs[i] = (int)(xoro.Next() & MAX);
+                }
+            }
+            else
+            {
+                ivs = GetFixedIVs(events);
             }
 
             pk.IV_HP = ivs[0];
@@ -1008,10 +811,7 @@ public struct LevelInfo
             {
 
                 pk.SetAbilityIndex((int)(xoro.Next()&N_ABILITY));
-
-                if (pk.Species == 201)
-                    pk.Form = (int)xoro.Next()%28;
-
+                
                 var genderRatio = PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form).Gender;
                 if (genderRatio == PersonalInfo.RatioMagicGenderless)
                     pk.Gender = (int)Gender.Genderless;
@@ -1029,7 +829,8 @@ public struct LevelInfo
 
             if (type is not RNGType.MysteryGift || AllowRandomNature(events))
             {
-                if (issync == false)
+                bool IsSync = SyncNature == Nature.Random || type is RNGType.MysteryGift ? false : true;
+                if (!IsSync)
                     pk.Nature = (int)(xoro.Next() % N_NATURE);
                 else
                     pk.Nature = (int)SyncNature;
@@ -1063,64 +864,82 @@ public struct LevelInfo
             _ => Shiny.Never,
         };
 
+        private static bool IsFixedIV(RNGType type, PokeEvents events) => type is RNGType.MysteryGift && events switch
+        {
+            PokeEvents.PokeCenterPiplup => true,
+            _ => false,
+        };
+
         private static int GetFlawless(RNGType type, PokeEvents events)
 		{
             return type switch
             {
-                RNGType.Legendary or Pokemon.RNGType.Shamin or RNGType.Roamer or RNGType.Gift_3IV  => 3,
+                RNGType.Legendary or RNGType.Shamin or RNGType.Roamer or RNGType.Gift_3IV  => 3,
                 RNGType.MysteryGift => events switch
                 {
                     PokeEvents.ManaphyEgg => 3,
                     PokeEvents.BirthDayHappiny => 0,
+                    PokeEvents.PokeCenterPiplup => 0,
+                    PokeEvents.KorDawnPiplup => 0,
+                    PokeEvents.KorRegigigas => 3,
+                    PokeEvents.OtsukimiClefairy => 0,
                     _ => 0,
                 },
                 _ => 0,
             };  
 		}
-
-        private static int[] GetGiftFTID(PokeEvents events, ITrainerID tr)
+        private static int[] GetFixedIVs(PokeEvents events) => events switch
         {
-            int[] tidsid = events switch
-            {
-                PokeEvents.BirthDayHappiny => new int[2] { 61213, 2108 },
-                _ => new int[2] { tr.TID, tr.SID },
-            };
-            return tidsid;
-        }
+            PokeEvents.PokeCenterPiplup => new int[6] { 20, 20, 20, 20, 28, 20 },
+            _ => throw new System.ArgumentException("No fixed IVs for this event."),
+        };
 
-        private static Gender GetEventGender(PokeEvents events)
+        private static int[] GetGiftFTID(PokeEvents events, ITrainerID tr) => events switch
         {
-            return events switch
-            {
-                PokeEvents.BirthDayHappiny => Gender.Female,
-                _ => Gender.Genderless,
-            };
-        }
+            PokeEvents.ManaphyEgg => new int[2] { tr.TID, tr.SID },
+            PokeEvents.BirthDayHappiny => new int[2] { 61213, 2108 },
+            PokeEvents.PokeCenterPiplup => new int[2] { 58605, 03100 },
+            PokeEvents.KorDawnPiplup => new int[2] { 28217, 18344 },
+            PokeEvents.KorRegigigas => new int[2] { 11257, 18329 },
+            PokeEvents.OtsukimiClefairy => new int[2] { 29358, 02307 },
+            _ => new int[2] { tr.TID, tr.SID },
+        };
 
-        private static Nature GetEventNature(PokeEvents events)
+        private static Gender GetEventGender(PokeEvents events) => events switch
         {
-            return events switch
-            {
-                PokeEvents.BirthDayHappiny => Nature.Hardy,
-                _ => Nature.Hardy,
-            };
-        }
+            PokeEvents.BirthDayHappiny => Gender.Female,
+            PokeEvents.PokeCenterPiplup => Gender.Male,
+            PokeEvents.KorDawnPiplup => Gender.Male,
+            PokeEvents.KorRegigigas => Gender.Genderless,
+            PokeEvents.OtsukimiClefairy => Gender.Male,
+            _ => Gender.Genderless,
+        };
 
-        private static bool AllowRandomNature(PokeEvents events)
+        private static Nature GetEventNature(PokeEvents events) => events switch
         {
-            return events switch
-            {
-                PokeEvents.BirthDayHappiny => false,
-                _ => true,
-            };
-        }
+            PokeEvents.BirthDayHappiny => Nature.Hardy,
+            PokeEvents.PokeCenterPiplup => Nature.Hardy,
+            PokeEvents.KorDawnPiplup => Nature.Hardy,
+            PokeEvents.OtsukimiClefairy => Nature.Modest,
+            _ => Nature.Hardy,
+        };
 
-        private static bool GetIsShiny(int tid, int sid, uint pid)
+        private static bool AllowRandomNature(PokeEvents events) => events switch
         {
-            return GetIsShiny(pid, (uint)((sid << 16) | tid));
-        }
+            PokeEvents.ManaphyEgg => true,
+            PokeEvents.BirthDayHappiny => false,
+            PokeEvents.PokeCenterPiplup => false,
+            PokeEvents.KorDawnPiplup => false,
+            PokeEvents.KorRegigigas => true,
+            PokeEvents.OtsukimiClefairy => false,
+            _ => true,
+        };
 
-        private static bool GetIsShiny(uint pid, uint oid) => GetShinyXor(pid, oid) < 16;
+        private static bool GetIsShiny(int tid, int sid, uint pid) =>
+            GetIsShiny(pid, (uint)((sid << 16) | tid));        
+
+        private static bool GetIsShiny(uint pid, uint oid) => 
+            GetShinyXor(pid, oid) < 16;
 
         private static uint GetShinyXor(uint pid, uint oid)
         {

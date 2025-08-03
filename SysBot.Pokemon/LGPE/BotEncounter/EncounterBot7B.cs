@@ -3,15 +3,15 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using SysBot.Base;
 using System.Collections.Generic;
 using static SysBot.Base.SwitchButton;
 using static SysBot.Base.SwitchStick;
 using static SysBot.Pokemon.PokeDataOffsets7B;
+using PKHeX.Core.Searching;
 
 namespace SysBot.Pokemon
 {
-    public class EncounterBot7B : PokeRoutineExecutor7B, IEncounterBot
+    public class EncounterBot7B : PokeRoutineExecutor7B
     {
         protected readonly PokeBotHub<PK8> Hub;
         private readonly IDumper DumpSetting;
@@ -19,7 +19,6 @@ namespace SysBot.Pokemon
         protected readonly int[] DesiredMinIVs;
         protected readonly int[] DesiredMaxIVs;
         private readonly IReadOnlyList<string> WantedNatures;
-        public ICountSettings Counts => Settings;
         public EncounterBot7B(PokeBotState cfg, PokeBotHub<PK8> hub) : base(cfg)
         {
             Hub = hub;
@@ -30,13 +29,14 @@ namespace SysBot.Pokemon
         }
 
         protected int encounterCount;
+        protected long EncounterTiming;
 
         public override async Task MainLoop(CancellationToken token)
         {
+            EncounterTiming = 0;
             Log("Identifying trainer data of the host console.");
-            var sav = await IdentifyTrainer(token).ConfigureAwait(false);
+            await IdentifyTrainer(token).ConfigureAwait(false);
             await InitializeHardware(Settings, token).ConfigureAwait(false);
-
             try
             {
                 Log($"Starting main {GetType().Name} loop.");
@@ -64,115 +64,163 @@ namespace SysBot.Pokemon
 
         private async Task DoLiveStatsChecking(CancellationToken token)
         {
+            var hash = "";
+            await DetachController(token).ConfigureAwait(false);
             while (!token.IsCancellationRequested)
             {
-                if (Settings.SetFortuneTellerNature is not Nature.Random && !await IsNatureTellerEnabled(token).ConfigureAwait(false))
+                //Force the Fortune Teller Nature value, value is reset at the end of the day
+                if (Settings.SetFortuneTellerNature != Nature.Random && 
+                    (!await IsNatureTellerEnabled(token).ConfigureAwait(false) || await ReadWildNature(token).ConfigureAwait(false) != Settings.SetFortuneTellerNature))
                 {
                     await EnableNatureTeller(token).ConfigureAwait(false);
                     await EditWildNature(Settings.SetFortuneTellerNature, token).ConfigureAwait(false);
                     Log($"Fortune Teller enabled, Nature set to {await ReadWildNature(token).ConfigureAwait(false)}.");
                 }
 
-                while (await IsInCatchScreen(token).ConfigureAwait(false) || await IsGiftFound(token).ConfigureAwait(false) || await IsInBattle(token).ConfigureAwait(false) || await IsInTrade(token).ConfigureAwait(false))
-                    await Task.Delay(1_000, token).ConfigureAwait(false);
+                //Check Lure Type
+                if (await ReadLureType(token).ConfigureAwait(false) != Settings.SetLure)
+                    await EditLureType((uint)Settings.SetLure, token).ConfigureAwait(false);
 
-                while (!await IsInCatchScreen(token).ConfigureAwait(false) && !await IsGiftFound(token).ConfigureAwait(false) && !await IsInBattle(token).ConfigureAwait(false) && !await IsInTrade(token).ConfigureAwait(false))
-                    await Task.Delay(1_000, token).ConfigureAwait(false);
+                //Check Lure Steps
+                if (Settings.SetLure != Lure.None && await ReadLureCounter(token).ConfigureAwait(false) < 20)
+                    await EditLureCounter(100, token).ConfigureAwait(false);
 
-                if (!await IsInTitleScreen(token).ConfigureAwait(false))
+                PB7? pk = await DetectAndRead(token).ConfigureAwait(false);
+
+                if (pk is not null && hash != SearchUtil.HashByDetails(pk))
                 {
-                    Log("Pokémon found! Checking details...");
-                    var pk = await ReadUntilPresentMain(PokeData, 2_000, 0_200, token).ConfigureAwait(false);
-                    if (pk == null)
-                        pk = await ReadUntilPresent(StationaryBattleData, 2_000, 0_200, token).ConfigureAwait(false);
-
-                    if (pk == null)
-                        Log("Check error. Either a wrong offset is used, or the RAM is shifted.");
-                    else
-                        await HandleEncounter(pk, token);
+                    await HandleEncounter(pk, token, false);
+                    hash = hash.Equals("") || pk is not null ? SearchUtil.HashByDetails(pk) : "";
                 }
             }
+        }
+
+        private async Task<PB7?> DetectAndRead(CancellationToken token)
+        {
+            var found = false;
+            PB7? pk = null;
+            while (!found && !token.IsCancellationRequested)
+            {
+                if (await IsInCatchScreen(token).ConfigureAwait(false))
+                {
+                    found = true;
+                    pk = await ReadWildOrGo(token).ConfigureAwait(false);
+                }
+                else if (await IsGiftFound(token).ConfigureAwait(false))
+                {
+                    found = true;
+                    pk = await ReadGiftOrFossil(token).ConfigureAwait(false);
+                }
+                else if (await IsInBattle(token).ConfigureAwait(false))
+                {
+                    found = true;
+                    pk = await ReadStationary(token).ConfigureAwait(false);
+
+                }
+                else if (await IsInTrade(token).ConfigureAwait(false))
+                {
+                    found = true;
+                    pk = await ReadTrade(token).ConfigureAwait(false);
+                }
+            }
+
+            if (pk is null)
+                pk = await ReadMainPokeData(token).ConfigureAwait(false);
+
+            return pk;
         }
 
         private async Task DoRestartingEncounter(CancellationToken token)
         {
             var mode = Settings.EncounteringType;
-            var offset = mode is LetsGoMode.Stationary ? StationaryBattleData : PokeData;
-            var isheap = mode is LetsGoMode.Stationary;
-            var stopwatch = new Stopwatch();
-            var ms = (long)0;
+            //Check Text Speed
+            if (await ReadTextSpeed(token).ConfigureAwait(false) != TextSpeed.Fast)
+                await EditTextSpeed(TextSpeed.Fast, token).ConfigureAwait(false);
 
-            if (mode == LetsGoMode.Stationary)
-                Log("Ensure to have a powerful Pokémon in the first slot of your team, with a move that can knock out the enemy in a few turns as first move.");
+            //Do not allow video recording for encounters with timers. User can manually record the encounter.
+            if (mode is LetsGoMode.Stationary && Hub.Config.StopConditions.CaptureVideoClip)
+                Hub.Config.StopConditions.CaptureVideoClip = false;
 
             while (!token.IsCancellationRequested)
             {
-
                 //Force the Fortune Teller Nature value
                 if (Settings.SetFortuneTellerNature != Nature.Random)
                 {
-                    await Task.Delay(2_000, token).ConfigureAwait(false);
                     await EnableNatureTeller(token).ConfigureAwait(false);
                     await EditWildNature(Settings.SetFortuneTellerNature, token).ConfigureAwait(false);
                     Log($"Fortune Teller enabled, Nature set to {await ReadWildNature(token).ConfigureAwait(false)}.");
                 }
 
-                stopwatch.Restart();
+                await SpamUntilEncounter(token).ConfigureAwait(false);
+                var pk = await ReadResetEncounter(mode, token).ConfigureAwait(false);
 
-                //Spam A until battle starts
-                if (mode is LetsGoMode.Stationary)
-                {
-                    while (!await IsInBattle(token).ConfigureAwait(false) && !(ms != 0 && stopwatch.ElapsedMilliseconds > ms))
-                        await Click(A, 0_200, token).ConfigureAwait(false);
-                    Log("Battle started, checking details...");
-                }
-                else if (mode == LetsGoMode.Trades)
-                {
-                    while (!await IsInTrade(token).ConfigureAwait(false) && !(ms != 0 && stopwatch.ElapsedMilliseconds > ms))
-                        await Click(A, 0_200, token).ConfigureAwait(false);
-                    Log("Trade started, checking details...");
-                }
-                else if (mode == LetsGoMode.Gifts)
-                {
-                    while (!await IsGiftFound(token).ConfigureAwait(false) && !(ms != 0 && stopwatch.ElapsedMilliseconds > ms))
-                        await Click(A, 0_200, token).ConfigureAwait(false);
-                    Log("Gift found, checking details...");
-                }
-
-                //Ms taken from a single encounter + margin
-                if (ms == 0)
-                    ms = stopwatch.ElapsedMilliseconds + 2500;
-
-                var pk = new PB7();
-                if (isheap)
-                    pk = await ReadUntilPresentMain(offset, 2_000, 0_200, token).ConfigureAwait(false);
+                if (pk is null)
+                    Log("Can not read PKM data. Either a wrong offset has been used, or RAM is shifted.");
                 else
-                    pk = await ReadUntilPresent(offset, 2_000, 0_200, token).ConfigureAwait(false);
-
-                if (pk != null)
                 {
-                    if (await HandleEncounter(pk, token).ConfigureAwait(false))
+                    if (await HandleEncounter(pk, token, false).ConfigureAwait(false))
                     {
-                        if (mode is LetsGoMode.Stationary)
-                        {
-                            Log("Result found, defeating the enemy.");
-                            stopwatch.Restart();
-                            //Spam A until the battle ends
-                            while (!await IsInCatchScreen(token).ConfigureAwait(false))
-                            {
-                                if (stopwatch.ElapsedMilliseconds > 60000)
-                                {
-                                    Log("Enemy could not be defeated. Target has been lost. Use a pokemon with a more powerful move in the first slot next time.");
-                                    return;
-                                }
-                                await Click(A, 0_500, token).ConfigureAwait(false);
-                            }
-                        }
                         await Click(HOME, 1_000, token).ConfigureAwait(false);
                         return;
                     }
                 }
 
+                await ResetEncounter(mode, token).ConfigureAwait(false);
+            }
+        }
+
+        private async Task SpamUntilEncounter(CancellationToken token)
+        {
+            const long MinTimeRecovery = 7_000;
+            Stopwatch stopwatch = new();
+            stopwatch.Start();
+
+            if (Settings.EncounteringType is LetsGoMode.Stationary)
+                while (!(await IsInBattle(token).ConfigureAwait(false) || (await IsInCatchScreen(token).ConfigureAwait(false))))
+                {
+                    if (EncounterTiming != 0 && stopwatch.ElapsedMilliseconds > EncounterTiming)
+                        await DetachController(token).ConfigureAwait(false);
+                    await Click(A, 0_200, token).ConfigureAwait(false);
+                }
+            else
+                while (!(await IsInCatchScreen(token).ConfigureAwait(false) || await IsGiftFound(token).ConfigureAwait(false) || await IsInTrade(token).ConfigureAwait(false)))
+                {
+                    if (EncounterTiming != 0 && stopwatch.ElapsedMilliseconds > EncounterTiming)
+                        await DetachController(token).ConfigureAwait(false);
+                    await Click(A, 0_200, token).ConfigureAwait(false);
+                }
+
+            if (EncounterTiming == 0)
+                EncounterTiming = stopwatch.ElapsedMilliseconds + MinTimeRecovery;
+        }
+
+        private async Task<PB7?> ReadResetEncounter(LetsGoMode mode, CancellationToken token)
+        {
+            var pk = mode switch
+            {
+                LetsGoMode.Stationary => await ReadStationary(token).ConfigureAwait(false),
+                LetsGoMode.Fossils => await ReadGiftOrFossil(token).ConfigureAwait(false),
+                LetsGoMode.Gifts => await ReadGiftOrFossil(token).ConfigureAwait(false),
+                LetsGoMode.Trades => await ReadTrade(token).ConfigureAwait(false),
+                LetsGoMode.GoPark => await ReadGoEntity(token).ConfigureAwait(false),
+                _ => throw new NotImplementedException(),
+            };
+
+            if (pk is null)
+                pk = await ReadMainPokeData(token).ConfigureAwait(false);
+
+            return pk;
+        }
+
+        private async Task ResetEncounter(LetsGoMode mode, CancellationToken token)
+        {
+            if (mode is LetsGoMode.GoPark)
+            {
+                Log("Resetting the encounter by run away...");
+                await FleeToOverworld(token).ConfigureAwait(false);
+            }
+            else
+            {
                 Log($"Resetting the encounter by restarting the game...");
                 await CloseGame(Hub.Config, token).ConfigureAwait(false);
                 await OpenGame(Hub.Config, token).ConfigureAwait(false);
@@ -186,7 +234,7 @@ namespace SysBot.Pokemon
         }
 
         // return true if breaking loop
-        private async Task<bool> HandleEncounter(PB7? pk, CancellationToken token)
+        private async Task<bool> HandleEncounter(PB7? pk, CancellationToken token, bool showEndRoutine = true)
         {
             if (pk == null)
                 return false;
@@ -222,21 +270,16 @@ namespace SysBot.Pokemon
                 await PressAndHold(CAPTURE, 2_000, 0, token).ConfigureAwait(false);
             }
 
-            var msg = $"Result found!\n{print}\nStopping routine execution; restart the bot to search again.";
+            var msg = "";
+            if(showEndRoutine)
+                msg = $"Result found!\n{print}\nStopping routine execution; restart the bot to search again.";
 
             if (!string.IsNullOrWhiteSpace(Hub.Config.StopConditions.MatchFoundEchoMention))
                 msg = $"{Hub.Config.StopConditions.MatchFoundEchoMention} {msg}";
-            EchoUtil.Echo(msg);
             Log(msg);
 
-            IsWaiting = true;
-            while (IsWaiting)
-                await Task.Delay(1_000, token).ConfigureAwait(false);
-            return false;
+            return true;
         }
-
-        private bool IsWaiting;
-        public void Acknowledge() => IsWaiting = false;
 
         protected async Task ResetStick(CancellationToken token)
         {

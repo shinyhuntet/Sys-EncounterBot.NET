@@ -5,7 +5,12 @@
         None,
         ManaphyEgg,
         BirthDayHappiny,
+        PokeCenterPiplup,
+        KorDawnPiplup,
+        KorRegigigas,
+        OtsukimiClefairy,
     }
+    
     public enum RNGType
 	{
         Wild,

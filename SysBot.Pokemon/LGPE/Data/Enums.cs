@@ -8,6 +8,11 @@
         Stationary,
 
         /// <summary>
+        /// Bot will soft reset for Fossils
+        /// </summary>
+        Fossils,
+
+        /// <summary>
         /// Bot will soft reset for Gifts
         /// </summary>
         Gifts,
@@ -18,17 +23,17 @@
         Trades,
 
         /// <summary>
+        /// Bot will soft reset for Go Park entities
+        /// </summary>
+        GoPark,
+
+        /// <summary>
         /// Bot will scan for any mon
         /// </summary>
         LiveStatsChecking,
     }
     public enum LGPEOverworldMode
     {
-        /// <summary>
-        /// Bot will test the offsets
-        /// </summary>
-        TestRoutine,
-
         /// <summary>
         /// Bot will scan for any mon
         /// </summary>
@@ -39,12 +44,20 @@
         /// </summary>
         WildBirds,
     }
-    public enum LetsGoTest
+    public enum Lure
     {
-        Unfreeze,
-        TestOffsets,
-        EscapeFromBattle,
+        None = 0,
+        Lure = 900,
+        SuperLure = 901,
+        MaxLure = 902,
     }
+    public enum TextSpeed
+    {
+        Slow,
+        Normal,
+        Fast,
+    }
+
     public enum LGPESpecies : ushort
     {
         None,

@@ -5,7 +5,7 @@ using SysBot.Base;
 
 namespace SysBot.Pokemon
 {
-    public class Encounter7BSettings : IBotStateSettings, ICountSettings
+    public class Encounter7BSettings : IBotStateSettings
     {
         private const string Counts = nameof(Counts);
         private const string Encounter = nameof(Encounter);
@@ -19,6 +19,10 @@ namespace SysBot.Pokemon
 
         [Category(Encounter), Description("Set the fortune teller nature. All the wild and stationary Pokémon will have this nature. Ignored if random.")]
         public PKHeX.Core.Nature SetFortuneTellerNature { get; set; } = PKHeX.Core.Nature.Random;
+
+        [Category(Encounter), Description("Set the Lure type. The Lure will be reactivated once the effect ends. Only useful for LiveStatsChecking. Ignored if None.")]
+        public Lure SetLure { get; set; } = Lure.None;
+
 
         private int _completedWild;
         private int _completedLegend;
@@ -37,16 +41,11 @@ namespace SysBot.Pokemon
             set => _completedLegend = value;
         }
 
-        [Category(Counts), Description("When enabled, the counts will be emitted when a status check is requested.")]
-        public bool EmitCountsOnStatusCheck { get; set; }
-
         public int AddCompletedEncounters() => Interlocked.Increment(ref _completedWild);
         public int AddCompletedLegends() => Interlocked.Increment(ref _completedLegend);
 
         public IEnumerable<string> GetNonZeroCounts()
         {
-            if (!EmitCountsOnStatusCheck)
-                yield break;
             if (CompletedEncounters != 0)
                 yield return $"Wild Encounters: {CompletedEncounters}";
             if (CompletedLegends != 0)

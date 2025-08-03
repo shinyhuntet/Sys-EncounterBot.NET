@@ -1,36 +1,23 @@
-﻿using System;
-
-namespace SysBot.Pokemon
+﻿namespace SysBot.Pokemon
 {
     public static class PokeDataOffsets7B
     {
         public const int BoxFormatSlotSize = 0x104;
         public const int TrainerSize = 0x168;
-        public const uint FreezedValue = 0x1610EE0; //1 byte
+        public const uint FreezedValue = 0x1610EE0; //main - 1 byte
+        public const uint IsInConfirmationDialog = 0x1654494; //main
         public const uint IsInOverworld = 0x163F694; //main
         public const uint IsInBattleScenario = 0x1EE067C; //main
         public const uint IsInTitleScreen = 0x160D4E0; //main
         public const uint IsInTrade = 0x1614F28; //main
         public const uint IsGiftFound = 0x1615928; //main
-        public const uint StationaryBattleData = 0x9A118D68; //heap
-        public const uint PokeData = 0x163EDC0; //main
+        public const uint StationaryPokeData = 0x9A118D68; //heap
+        public const uint GiftPokeData = 0xAD5DCD90; //heap
+        public const uint WildPokeData = 0xAD5DC108; //heap
+        public const uint GoPokeData = 0xAD5DC910; //heap - Thanks Anubis!
+        public const uint MainPokeData = 0x163EDC0; //main
         public const uint LastSpawn = 0x5E12B148; //heap
-        public const uint EShinyValue = 0x7398C4; //main
-        public const uint PShinyValue = 0x739864; //main
-        public const uint PGeneratingFunction1 = 0x7398D0; //main
-        public const uint PGeneratingFunction2 = 0x7398D4; //main
-        public const uint PGeneratingFunction3 = 0x7398D8; //main
-        public const uint PGeneratingFunction4 = 0x7398DC; //main
-        public const uint PGeneratingFunction5 = 0x7398E0; //main
-        public const uint PGeneratingFunction6 = 0x7398E4; //main
-        public const uint PGeneratingFunction7 = 0x7398E8; //main
-        public const uint EGeneratingFunction1 = 0x739930; //main
-        public const uint EGeneratingFunction2 = 0x739934; //main
-        public const uint EGeneratingFunction3 = 0x739938; //main
-        public const uint EGeneratingFunction4 = 0x73993C; //main
-        public const uint EGeneratingFunction5 = 0x739940; //main
-        public const uint EGeneratingFunction6 = 0x739944; //main
-        public const uint EGeneratingFunction7 = 0x739948; //main
+        public const uint LastSpawnFlags = 0x419BB184; //heap - Thanks Anubis!
         public const uint TrainerData = 0x53582030; //heap
         public const uint BoxSlot1 = 0x533675B0; //heap
         public const uint Money = 0x53324108; //heap
@@ -40,5 +27,8 @@ namespace SysBot.Pokemon
         public const uint CatchingSpecies = 0x9A264598; //heap - Thanks Lincoln-LM!
         public const uint CatchCombo = 0x5E1CF500; //heap - Thanks Lincoln-LM!
         public const uint SpeciesCombo = 0x5E1CF4F8; //heap - Thanks Lincoln-LM!
+        public const uint LureType = 0x53405D28; // heap - Thanks Anubis!
+        public const uint LureCounter = 0x53405D2A; //heap - Thanks Anubis!
+        public const uint TextSpeedOffset = 0x53321EDC; //heap - Thanks Anubis!
     }
 }
